@@ -42,29 +42,45 @@
 #include <chrono>
 #include <unordered_map>
 #include <conio.h>
+#include <optional>
+#include <charconv>
 
-std::string inputLineWithEsc()
+std::optional<std::string>askString(
+    std::string const& prompt,
+    std::optional<std::string> const& def = std::nullopt)
 {
+    std::cout << "< " << prompt << ":";
+
+    if (def)
+    {
+        std::cout << " [" << *def << ']';
+    }
+
+    std::cout << "\n> ";
+
     std::string Line;
-    char ch;
 
     while (true)
     {
         if (_kbhit())
         {
-            ch = _getch();
+            char ch = _getch();
 
             if (ch == 27) // Esc
             {
-                std::cout << "Input canseled" << std::endl;
-                return "";
+                std::cout << "Canseled" << std::endl;
+                return std::nullopt;
             }
             else if (ch == '\r') // Enter
             {
-                std::cout << "\n";
-                break;
+                std::cout << std::endl;
+                if (Line.empty() && def)
+                {
+                    return def;
+                }
+                return Line;
             }
-            else if(ch == '\b') //Backspace
+            else if (ch == '\b') //Backspace
             {
                 if (!Line.empty())
                 {
@@ -81,6 +97,115 @@ std::string inputLineWithEsc()
     }
     return Line;
 }
+
+template<typename T>
+bool parseValue(const std::string& s, T& value);
+
+template<>
+bool parseValue<int>(const std::string& s, int& value)
+{
+    auto [ptr, ec] = std::from_chars(
+        s.data(),
+        s.data() + s.size(),
+        value);
+
+    return ec == std::errc();
+}
+
+template<>
+bool parseValue<std::string>(const std::string& s, std::string& value)
+{
+    value = s;
+    return true;
+}
+
+bool parseMoney(const std::string& s, int& value)
+{
+    //60.65 // 00.50 // 1000.87 // .78 // 8.4 // 91 //
+    //after . only two digits
+
+    value = 0;
+    int ipr = 0;
+    int ipr_fract = 0; 
+    bool dot = false;
+    int fractal_dig = 0;
+
+    for (char c : s)
+    {
+        if (c == '.')
+        {
+            if (!dot)
+            {
+                ipr *= 100;
+                dot = true;
+                continue;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        if (unsigned(c - '0') > 9)
+        {
+            return false;
+        }
+
+        if (fractal_dig >= 2)
+        {
+            return false;
+        }
+
+        if (dot)
+        {
+            ipr_fract = ipr_fract*10 + c - '0';
+            ++fractal_dig;
+        }
+        else
+        {
+            ipr = ipr * 10 + c - '0';
+        }
+        
+    }
+
+    value = ipr + ipr_fract;
+
+    return true;
+}
+
+template<typename T>
+std::optional<T> ask(
+    const std::string& prompt,
+    std::optional<T> def = std::nullopt)
+{
+    while (true)
+    {
+        std::optional<std::string> defStr;
+
+        if (def)
+            defStr = std::to_string(*def);
+        auto s = askString(prompt, defStr);
+
+        if (!s)
+            return std::nullopt;
+
+        T value;
+
+        if (parseValue<T>(*s, value))
+            return value;
+
+        std::cout << "Invalid value. Try again.\n";
+    }
+}
+
+template<>
+std::optional<std::string> ask<std::string>(
+    const std::string& prompt,
+    std::optional < std::string> def)
+{
+    return askString(prompt, def);
+}
+
 
 class receipt
 {
@@ -145,7 +270,23 @@ public:
 private:
     void CmdAdd()
     {
+        auto store = ask<std::string>("Store name");
+        if (!store) return;
 
+        auto product = ask<std::string>("Product name");
+        if (!product) return;
+
+        auto price = ask<int>("Price");
+        if (!price) return;
+
+        auto discount = ask<int>("Discount %", 0);
+
+        std::cout << "\nAdded\n";
+
+        std::cout << *store << "\n";
+        std::cout << *product << "\n";
+        std::cout << *price << "\n";
+        std::cout << *discount << "\n";
     }
     void CmdExit()
     {
