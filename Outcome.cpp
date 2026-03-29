@@ -40,10 +40,10 @@
 #include <iostream>
 #include <string>
 #include <chrono>
-#include <unordered_map>
 #include <conio.h>
 #include <optional>
 #include <charconv>
+#include "CLI.h"
 
 std::optional<std::string>askString(
     std::string const& prompt,
@@ -125,8 +125,7 @@ bool parseMoney(const std::string& s, int& value)
     //after . only two digits
 
     value = 0;
-    int ipr = 0;
-    int ipr_fract = 0; 
+    int ipr = 0; 
     bool dot = false;
     int fractal_dig = 0;
 
@@ -136,7 +135,6 @@ bool parseMoney(const std::string& s, int& value)
         {
             if (!dot)
             {
-                ipr *= 100;
                 dot = true;
                 continue;
             }
@@ -155,22 +153,32 @@ bool parseMoney(const std::string& s, int& value)
         {
             return false;
         }
+        else if(dot)
+        {
+            fractal_dig++;
+        }
 
-        if (dot)
-        {
-            ipr_fract = ipr_fract*10 + c - '0';
-            ++fractal_dig;
-        }
-        else
-        {
-            ipr = ipr * 10 + c - '0';
-        }
+        ipr = ipr * 10 + c - '0';
         
     }
 
-    value = ipr + ipr_fract;
+    if (fractal_dig < 2)
+    {
+        for(int i = 0; i < (2 - fractal_dig); i++)
+            ipr *= 10;
+    }
+        
+    value = ipr;
 
     return true;
+}
+
+std::string Money2String(int iprice)
+{
+    int ifract = iprice % 100;
+    int iwhole = iprice / 100;
+
+    return std::string(std::to_string(iwhole) + '.' + std::to_string(ifract));
 }
 
 template<typename T>
@@ -206,102 +214,21 @@ std::optional<std::string> ask<std::string>(
     return askString(prompt, def);
 }
 
-
-class receipt
+std::optional<int>askMoney()
 {
-public:
+    auto s = askString("Price");
+    if (!s)
+        return std::nullopt;
 
-private:
-    std::string StoreName;
-    std::string address;
-    int IDNO;
-    std::string INR;
-    int bon_number;
-    int items_number;
-    //items
-    int total;
-    std::chrono::sys_seconds tmStamp;
-};
+    int vPrice = 0;
 
-class item
-{
-private:
-    std::string name;
-    //std::string alias???
-    int price_unit;
-    int amount;
-    bool discount;
-    int discounted_price;
-    int discount_percent;;
-};
+    if (parseMoney(*s, vPrice))
+        return vPrice;
 
-class CLI
-{
-public:
-    CLI() {
-        commands_["add"] = &CLI::CmdAdd;
-        commands_["exit"] = &CLI::CmdExit;
-    }
+    std::cout << "Invalid value. Try again.\n";
 
-    void run()
-    {
-        bRunning = true;
-        std::string line;
-
-        while (bRunning)
-        {
-            std::cout << "> ";
-
-            if (!std::getline(std::cin, line)) break;
-
-            auto it = commands_.find(line);
-            if (it != commands_.end())
-            {
-                auto method = it->second;
-                (this->*method)();
-            }
-            else
-            {
-                std::cout << "Unknown command: " << line << std::endl;
-            }
-
-        }
-    }
-private:
-    void CmdAdd()
-    {
-        auto store = ask<std::string>("Store name");
-        if (!store) return;
-
-        auto product = ask<std::string>("Product name");
-        if (!product) return;
-
-        auto price = ask<int>("Price");
-        if (!price) return;
-
-        auto discount = ask<int>("Discount %", 0);
-
-        std::cout << "\nAdded\n";
-
-        std::cout << *store << "\n";
-        std::cout << *product << "\n";
-        std::cout << *price << "\n";
-        std::cout << *discount << "\n";
-    }
-    void CmdExit()
-    {
-        bRunning = false;
-        std::cout << "< App has been closed!" << std::endl;
-    }
-private:
-    bool bRunning;
-    using CommandMethod = void(CLI::*)(void);
-    std::unordered_map<std::string, CommandMethod> commands_;
-};
-
-
-
-
+    return std::nullopt;
+}
 
 int main()
 {
