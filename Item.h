@@ -1,13 +1,27 @@
 #pragma once
 #include <string>
 
-class item
+class Item
 {
+public:
+Item(std::string const & name,
+    int const pricePerUnit,
+    double const amount, 
+    int const discount,
+    int const discountPercent,
+    int const Summ);
+
+std::string getName() const;
+int getPricePerUnit() const;
+int getSumm() const;      
+double getAmount() const; 
+
 private:
-    std::string name;
-    int price_unit;
-    int amount;
-    bool discount;
-    int discounted_price;
-    int discount_percent;;
+    std::string const name_;
+    int pricePerUnit_;
+    double amount_;
+    int discount_;
+    int discountPercent_;
+    int Summ_;
 };
+
